@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cmath>
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\ppm.h"
+#include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\obj.h"
 using namespace std;
 
 // function to draw line between two points
@@ -48,15 +49,79 @@ int main(int argc, char** argv) {
    image.edit_pixel(4, 2, "255", "0", "0");
    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
    */
-
-   // create image PPM image object
+   // draw red triangle on black ppm file
+   /*
    PPM image;
    image.create_ppm(1000, 1000, 255);
    line(499, 0, 999, 999, "255", "0", "0", image);
    line(999, 999, 0, 999, "255", "0", "0", image);
    line(0, 999, 499, 0, "255", "0", "0", image);
    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
-   // 
-
-   // implement line drawing
+   */
+   // test obj read
+   /*
+    OBJ input;
+    input.readFile("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\obj\\african_head.obj");
+    input.writeObj("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.obj");
+    */
+    // implement wire frame ppm from obj input
+    // declare
+    PPM image;
+    OBJ input;
+    vector<float> vert;
+    vector<float> vert2;
+    vector<int> face;
+    int x0, y0, x1, y1;
+    int width, height;
+    // specify height and width
+    width = 1000;
+    height = 1000;
+    // get input file and read
+    if (argc != 2) {
+        cerr << "missing input file: ./run <filename.obj>" << endl;
+    }
+    input.readFile(argv[1]);
+    // create ppm file
+    image.create_ppm(width, height, 255);
+    // draw faces
+    for (size_t i = 0; i < input.faceCount(); i++) {
+        face = input.getFace(i);
+        for (size_t j = 0; j < face.size(); j++) {
+            // get cords for v0 and v1
+            vert = input.getVert(face[j] - 1);
+            if (j == (face.size() - 1)) {
+                vert2 = input.getVert(face[0] - 1);
+            } else {
+                vert2 = input.getVert(face[j + 1] - 1);
+            }
+            // transform to 3D space
+            x0 = (vert[0] + 1) * (width / 2);
+            y0 = (vert[1] + 1) * (height / 2);
+            x1 = (vert2[0] + 1) * (width / 2);
+            y1 = (vert2[1] + 1) * (height / 2);
+            if (!(x0 == 0)) {
+                x0 -= 1;
+            } 
+            if (!(y0 == 0)) {
+                y0 -= 1;
+            } 
+            if (!(x1 == 0)) {
+                x1 -= 1;
+            } 
+            if (!(y1 == 0)) {
+                y1 -= 1;
+            }
+            //cout << x0 << " " << y0 << " " << x1 << " " << y1 << endl;
+            // Check if coordinates are within image bounds and draw line
+            if (x0 >= 0 && x0 < width && y0 >= 0 && y0 < height && x1 >= 0 && x1 < width && y1 >= 0 && y1 < height) {
+                line(x0, y0, x1, y1, "255", "255", "255", image);
+            } else {
+                cerr << "Warning: Coordinates out of bounds" << endl;
+                cerr << vert[0] << " " << vert[1] << " " << vert2[0] << " " << vert2[1] << endl;
+                cerr << x0 << " " << y0 << " " << x1 << " " << y1 << endl;
+            }
+        }
+    }
+    // write ppm file
+    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
 }
