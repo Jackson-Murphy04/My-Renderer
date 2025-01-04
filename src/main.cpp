@@ -94,6 +94,11 @@ int main(int argc, char** argv) {
             } else {
                 vert2 = input.getVert(face[j + 1] - 1);
             }
+            // normalize cords to -.8 - .8 grid 
+            vert[0] = ((vert[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
+            vert[1] = ((vert[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
+            vert2[0] = ((vert2[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
+            vert2[1] = ((vert2[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
             // transform to 3D space
             x0 = (vert[0] + 1) * (width / 2);
             y0 = (vert[1] + 1) * (height / 2);
@@ -122,6 +127,8 @@ int main(int argc, char** argv) {
             }
         }
     }
+    // flip image
+    image.vFlip();
     // write ppm file
     image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
 }

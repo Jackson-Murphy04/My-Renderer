@@ -15,6 +15,7 @@ public:
     bool create_ppm(int r, int c, int m);
     bool edit_pixel(int x, int y, string r, string g, string b);
     void test_output();
+    void vFlip();
     int getCols() const;
     int getRows() const;
 };

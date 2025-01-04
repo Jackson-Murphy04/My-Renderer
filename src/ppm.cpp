@@ -120,6 +120,23 @@ void PPM::test_output() {
     }
 }
 
+void PPM::vFlip() {
+    // declare
+    vector<vector<vector<string>>> og;
+    vector<vector<string>> temp;
+    vector<vector<vector<string>>> done;
+    // flip ppm image vector vertically 
+    og = image;
+    for (int i = og.size() - 1; i >= 0; i--) {
+        for (int j = og[i].size() - 1; j >= 0; j--) {
+            temp.push_back(og[i][j]);
+        }
+        done.push_back(temp);
+        temp.clear();
+    }
+    image = done;
+}
+
 int PPM::getCols() const { return cols; }
 
 int PPM::getRows() const { return rows; }

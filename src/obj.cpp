@@ -53,6 +53,27 @@ bool OBJ::readFile(string fileName) {
     }
     // close file
     fin.close();
+    // get max and min
+    if (!verts.empty()) {
+        for (size_t i = 0; i < verts.size(); i++) {
+            if (verts[i].size() > 0) {
+                if (verts[i][0] > maxX) {
+                    maxX = verts[i][0];
+                }
+                if (verts[i][0] < minX) {
+                    minX = verts[i][0];
+                }
+            }
+            if (verts[i].size() > 1) {
+                if (verts[i][1] > maxY) {
+                    maxY = verts[i][1];
+                }
+                if (verts[i][1] < minY) {
+                    minY = verts[i][1];
+                }
+            }
+        }
+    }
     // return
     return true;
 }
@@ -98,3 +119,18 @@ size_t OBJ::faceCount() {
     return faces.size();
 }
 
+float OBJ::getMaxX() {
+    return maxX;
+}
+
+float OBJ::getMaxY() {
+    return maxY;
+}
+
+float OBJ::getMinX() {
+    return minX;
+}
+
+float OBJ::getMinY() {
+    return minY;
+}
