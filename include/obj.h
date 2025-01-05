@@ -20,4 +20,5 @@ public:
     float getMaxY();
     float getMinX();
     float getMinY();
+    vector<vector<int>> getAllFaces();
 };

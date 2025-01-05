@@ -134,3 +134,7 @@ float OBJ::getMinX() {
 float OBJ::getMinY() {
     return minY;
 }
+
+vector<vector<int>> OBJ::getAllFaces() {
+    return faces;
+}
