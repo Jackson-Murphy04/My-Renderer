@@ -88,6 +88,7 @@ bool PPM::create_ppm(int r, int c, int m) {
     cols = c;
     max = m;
     // init image vectors
+    image.clear();
     image.resize(rows);
     for (size_t i = 0; i < image.size(); i++) {
         image[i].resize(cols);

@@ -81,14 +81,12 @@ bool barycentric_coords(vector<float> p, vector<float> a, vector<float> b, vecto
     float area_pbc = triangle_area(p, b, c);
     float area_pca = triangle_area(p, c, a);
     float area_pab = triangle_area(p, a, b);
-
     // Compute weights
     float alpha = area_pbc / area_abc;
     float beta = area_pca / area_abc;
     float gamma = area_pab / area_abc;
-
     // Check if the point is inside the triangle
-    return (alpha >= 0 && beta >= 0 && gamma >= 0);
+    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .001);
 }
 
 // function to fill faces 
@@ -133,10 +131,17 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
         }
         if (!ear_found) {
             cerr << "Error: Failed to find an ear!" << endl;
+            break;
         }
     }
     // loop triangles 
     for (size_t j = 0; j < triangles.size(); j++) { 
+        // Reset bounding box for each triangle
+        minX = numeric_limits<float>::max();
+        minY = numeric_limits<float>::max();
+        maxX = numeric_limits<float>::lowest();
+        maxY = numeric_limits<float>::lowest();
+
         // loop verts and update bounding box for face
         for (size_t i = 0; i < triangles[j].size(); i++) {
             // get vert and store to x and y
@@ -174,9 +179,9 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             if (maxY < y) {
                 maxY = y;
             }
-            //set vert[0] and vert[1] to new cords
-            vert[0] = x;
-            vert[1] = y;
+            //set triangle cords to new cords
+            triangles[j][i][0] = x;
+            triangles[j][i][1] = y;
         }
         // barycentric coordinates to see if pixel is in bounding box and color
         // triangles[j] is our triangle
@@ -184,15 +189,14 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
         b = triangles[j][1];
         c = triangles[j][2];
         // Iterate over pixels in bounding box
+
         for (float y1 = minY; y1 <= maxY; y1++) {
-            for (float x1 = minX; x1 <= maxX; x1++) {
+            for (float x1 = minX; x1 <= maxX; x1++) { 
                 vector<float> p = {x1, y1};
                 if (barycentric_coords(p, a, b, c)) {
                     // Point is inside the triangle, color it
                     image.edit_pixel(x1, y1, r, g, bl);
-                } else {
-                    cout << "WHYYYYYY??????" << endl;
-                }
+                } 
             }
         }
     } 
@@ -237,11 +241,11 @@ int main(int argc, char** argv) {
     vector<float> vert;
     vector<float> vert2;
     vector<int> face;
-    //int x0, y0, x1, y1;
+    int x0, y0, x1, y1;
     int width, height;
     // specify height and width
-    width = 1000;
-    height = 1000;
+    width = 800;
+    height = 800;
     // get input file and read
     if (argc != 2) {
         cerr << "missing input file: ./run <filename.obj>" << endl;
@@ -249,8 +253,8 @@ int main(int argc, char** argv) {
     input.readFile(argv[1]);
     // create ppm file
     image.create_ppm(width, height, 255);
+
     // wire frame render
-    /*
     // draw faces
     for (size_t i = 0; i < input.faceCount(); i++) {
         face = input.getFace(i);
@@ -294,7 +298,11 @@ int main(int argc, char** argv) {
             }
         }
     }
-    */
+    image.vFlip();
+    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\wireFrame.ppm");
+    input.readFile(argv[1]);
+    image.create_ppm(width, height, 255);
+    
     // full render
     //loop through faces and fill each face
     for (size_t i = 0; i < input.getAllFaces().size(); i++) {
