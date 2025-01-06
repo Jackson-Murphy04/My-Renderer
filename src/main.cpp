@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cmath>
 #include <cstdlib>
+#include <chrono>
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\ppm.h"
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\obj.h"
 using namespace std;
@@ -33,18 +34,42 @@ void line(int x0, int y0, int x1, int y1, string r, string g, string bl, PPM& im
     }
 }
 
+// Function to subtract two 3D vectors
+vector<float> operator-(const vector<float>& a, const vector<float>& b) {
+    return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
+}
+
+// Function to calculate the dot product of two 3D vectors
+float operator*(const vector<float>& a, const vector<float>& b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+// Function to calculate the cross product of two 3D vectors
+vector<float> cross_product(const vector<float>& a, const vector<float>& b) {
+    return {
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    };
+}
+
 // fill faces helpers
-// Cross product to determine if the triangle is convex
-float cross_product(vector<float> a, vector<float> b, vector<float> c) {
-    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+// calculate area
+float triangle_area(vector<float> a, vector<float> b, vector<float> c) {
+    return 0.5 * abs(a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
 }
 // Check if a point is inside the triangle formed by a, b, c
 bool is_point_in_triangle(vector<float> p, vector<float> a, vector<float> b, vector<float> c) {
-    float area_orig = abs(cross_product(a, b, c));
-    float area1 = abs(cross_product(p, a, b));
-    float area2 = abs(cross_product(p, b, c));
-    float area3 = abs(cross_product(p, c, a));
-    return abs(area1 + area2 + area3 - area_orig) < 1e-5;
+    float area_abc = triangle_area(a, b, c);
+    float area_pbc = triangle_area(p, b, c);
+    float area_pca = triangle_area(p, c, a);
+    float area_pab = triangle_area(p, a, b);
+    // Compute weights
+    float alpha = area_pbc / area_abc;
+    float beta = area_pca / area_abc;
+    float gamma = area_pab / area_abc;
+    // Check if the point is inside the triangle
+    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .0001);
 }
 // Check if a vertex forms an ear with its neighbors
 bool is_ear(vector<int> polygon, int i, OBJ& input) {
@@ -60,8 +85,6 @@ bool is_ear(vector<int> polygon, int i, OBJ& input) {
     cVert = input.getVert(curr - 1);
     int next = polygon[(i + 1) % n];
     nVert = input.getVert(next - 1);
-    // Check if the triangle is convex
-    if (cross_product(pVert, cVert, nVert) >= 0) return false;
     // Check if no other vertex is inside the triangle
     for (int j = 0; j < n; j++) {
         if (j == (i - 1 + n) % n || j == i || j == (i + 1) % n) continue;
@@ -71,10 +94,6 @@ bool is_ear(vector<int> polygon, int i, OBJ& input) {
 }
 
 // barycentric helper functions
-// calculate area
-float triangle_area(vector<float> a, vector<float> b, vector<float> c) {
-    return 0.5 * abs(a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
-}
 // calculate bary cords
 bool barycentric_coords(vector<float> p, vector<float> a, vector<float> b, vector<float> c) {
     float area_abc = triangle_area(a, b, c);
@@ -86,7 +105,7 @@ bool barycentric_coords(vector<float> p, vector<float> a, vector<float> b, vecto
     float beta = area_pca / area_abc;
     float gamma = area_pab / area_abc;
     // Check if the point is inside the triangle
-    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .001);
+    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .1);
 }
 
 // function to fill faces 
@@ -103,13 +122,6 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
     vector<float> a;
     vector<float> b;
     vector<float> c;
-    if (face.size() == 3) {
-        temp.push_back(input.getVert(face[0] - 1));
-        temp.push_back(input.getVert(face[1] - 1));
-        temp.push_back(input.getVert(face[2] - 1));
-        triangles.push_back(temp);
-        temp.clear();
-    }
     // use ear clipping to triangulate polygon
     while (face.size() > 3) {
         bool ear_found = false;
@@ -117,15 +129,14 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             if (is_ear(face, i, input)) {
                 int prev = (i - 1 + face.size()) % face.size();
                 int next = (i + 1) % face.size();
-                //triangles.push_back({face[prev], face[i], face[next]});
-                temp.push_back(input.getVert(face[prev - 1]));
-                temp.push_back(input.getVert(face[i - 1]));
-                temp.push_back(input.getVert(face[next - 1]));
+                // push the triangle formed by the vertices
+                temp.push_back(input.getVert(face[prev] - 1)); 
+                temp.push_back(input.getVert(face[i] - 1));   
+                temp.push_back(input.getVert(face[next] - 1)); 
                 triangles.push_back(temp);
                 temp.clear();
                 face.erase(face.begin() + i);
                 ear_found = true;
-                triangles.push_back(temp);
                 break;
             }
         }
@@ -133,6 +144,13 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             cerr << "Error: Failed to find an ear!" << endl;
             break;
         }
+    }
+    if (face.size() == 3) {
+        temp.push_back(input.getVert(face[0] - 1));
+        temp.push_back(input.getVert(face[1] - 1));
+        temp.push_back(input.getVert(face[2] - 1));
+        triangles.push_back(temp);
+        temp.clear();
     }
     // loop triangles 
     for (size_t j = 0; j < triangles.size(); j++) { 
@@ -203,37 +221,8 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
 }
 
 int main(int argc, char** argv) {
-    // test for ppm read and write
-    /*
-    if (argc != 2) {
-        cerr << "missing input file: ./run <filename>" << endl;
-    }
-    PPM image;
-    image.read_ppm(argv[1]);
-    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
-    */
-   // test for pixel edit
-   /*
-   PPM image;
-   image.create_ppm(5, 5, 255);
-   image.edit_pixel(4, 2, "255", "0", "0");
-   image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
-   */
-   // draw red triangle on black ppm file
-   /*
-   PPM image;
-   image.create_ppm(1000, 1000, 255);
-   line(499, 0, 999, 999, "255", "0", "0", image);
-   line(999, 999, 0, 999, "255", "0", "0", image);
-   line(0, 999, 499, 0, "255", "0", "0", image);
-   image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.ppm");
-   */
-   // test obj read
-   /*
-    OBJ input;
-    input.readFile("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\obj\\african_head.obj");
-    input.writeObj("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\out.obj");
-    */
+    // Declare a start time variable
+    auto start_time = chrono::high_resolution_clock::now(); // Start timing
     // implement wire frame ppm from obj input
     // declare
     PPM image;
@@ -305,9 +294,40 @@ int main(int argc, char** argv) {
     
     // full render
     //loop through faces and fill each face
+    // define light direction
+    int count = 0;
+    vector<float> light_dir = {0, 0, -1};
     for (size_t i = 0; i < input.getAllFaces().size(); i++) {
-        //fill(vector<int> face, int width, int height, string r, string g, string bl, PPM& image, OBJ& input)
-        fill(input.getFace(i), width, height, to_string(rand() % 255), to_string(rand() % 255), to_string(rand() % 255), image, input);
+        if ((int)i % (int)(input.getAllFaces().size() * 0.05) == 0) {
+            // Calculate elapsed time
+            auto current_time = chrono::high_resolution_clock::now();
+            auto duration = chrono::duration_cast<chrono::seconds>(current_time - start_time).count(); // Get elapsed time in seconds
+            cout << i << " faces out of " << input.getAllFaces().size() << " rendered " << count << "% done. Elapsed time: " << duration << " seconds." << endl;
+            count += 5;
+        }
+        // calculate light val
+        vector<int> face = input.getFace(i);
+        vector<vector<float>> screenCords(3);
+        vector<vector<float>> worldCords(3);
+        for (int j = 0; j < 3; j++) {
+            vector<float> v = input.getVert(face[j] - 1);
+            screenCords[j] = {((v[0] + 1) * width / 2), ((v[1] + 1) * height / 2)};
+            worldCords[j] = v;
+        }
+        vector<float> n(3);
+        n = cross_product((worldCords[2] - worldCords[0]), (worldCords[1] - worldCords[0]));
+        // normalize n
+        float length = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        if (length > 0) {
+            n[0] /= length;
+            n[1] /= length;
+            n[2] /= length;
+        }
+        float intensity = n * light_dir;
+        if (intensity > 0) {
+            // fill with color (intensity * 255)
+            fill(input.getFace(i), width, height, to_string(intensity * 255), to_string(intensity * 255), to_string(intensity * 255), image, input);
+        }
     }
     // flip image
     image.vFlip();
