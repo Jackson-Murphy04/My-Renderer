@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <chrono>
+#include <algorithm>
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\ppm.h"
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\obj.h"
 using namespace std;
@@ -108,6 +109,23 @@ bool barycentric_coords(vector<float> p, vector<float> a, vector<float> b, vecto
     return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .1);
 }
 
+float barycentricZ(vector<float> p, vector<float> a, vector<float> b, vector<float> c, vector<float> z) {
+    // declare
+    float z1;
+    // areas
+    float area_abc = triangle_area(a, b, c);
+    float area_pbc = triangle_area(p, b, c);
+    float area_pca = triangle_area(p, c, a);
+    float area_pab = triangle_area(p, a, b);
+    // Compute weights
+    float alpha = area_pbc / area_abc;
+    float beta = area_pca / area_abc;
+    float gamma = area_pab / area_abc;
+    // compute z bary val
+    z1 = alpha * z[0] + beta * z[1] + gamma * z[2];
+    return z1;
+}
+
 // function to fill faces 
 void fill(vector<int> face, int width, int height, string r, string g, string bl, PPM& image, OBJ& input) {
     // declare 
@@ -115,13 +133,14 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
     float minY = .8;
     float maxX = -.8;
     float maxY = -.8;
-    float x, y;
+    float x, y, z;
     vector<float> vert;
     vector<vector<vector<float>>> triangles; // all triangles of face, all verts of triangle, vert 
     vector<vector<float>> temp;
     vector<float> a;
     vector<float> b;
     vector<float> c;
+    vector<float> zV;
     // use ear clipping to triangulate polygon
     while (face.size() > 3) {
         bool ear_found = false;
@@ -166,9 +185,11 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             vert = triangles[j][i];
             x = vert[0];
             y = vert[1];
+            z = vert[2];
             // normalize cords to (-.8,.8) grid 
             vert[0] = ((vert[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
             vert[1] = ((vert[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
+            vert[2] = ((vert[2] - input.getMinZ()) / (input.getMaxZ() - input.getMinZ())) * 1.6 - .8;
             // transform to 2D space
             x = (vert[0] + 1) * (width / 2);
             y = (vert[1] + 1) * (height / 2);
@@ -200,20 +221,29 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             //set triangle cords to new cords
             triangles[j][i][0] = x;
             triangles[j][i][1] = y;
+            triangles[j][i][2] = z;
         }
         // barycentric coordinates to see if pixel is in bounding box and color
         // triangles[j] is our triangle
+        zV = {triangles[j][0][2], triangles[j][1][2], triangles[j][2][2]};
+        triangles[j][0].pop_back();
+        triangles[j][1].pop_back();
+        triangles[j][2].pop_back();
         a = triangles[j][0];
         b = triangles[j][1];
         c = triangles[j][2];
         // Iterate over pixels in bounding box
-
         for (float y1 = minY; y1 <= maxY; y1++) {
             for (float x1 = minX; x1 <= maxX; x1++) { 
                 vector<float> p = {x1, y1};
                 if (barycentric_coords(p, a, b, c)) {
                     // Point is inside the triangle, color it
-                    image.edit_pixel(x1, y1, r, g, bl);
+                    // calculate and normalize z val of face and compare to z buffer and only draw pixel if z < zbuffer
+                    z = barycentricZ(p, a, b, c, zV); // z[0] = a.z, z[1] = b.z, z[2] = c.z 
+                    if (z < input.getZBuffer(y1 * width + x1)) {
+                        input.editZBuffer((y1 * width + x1), z); 
+                        image.edit_pixel(x1, y1, r, g, bl);
+                    }
                 } 
             }
         }
@@ -297,6 +327,8 @@ int main(int argc, char** argv) {
     // define light direction
     int count = 0;
     vector<float> light_dir = {0, 0, -1};
+    // init zBuffer
+    input.initZBuffer(width, height);
     for (size_t i = 0; i < input.getAllFaces().size(); i++) {
         if ((int)i % (int)(input.getAllFaces().size() * 0.05) == 0) {
             // Calculate elapsed time
@@ -333,4 +365,17 @@ int main(int argc, char** argv) {
     image.vFlip();
     // write ppm file
     image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\render.ppm");
+    // write a z buffer image
+    float z_near = 0.8;
+    float z_far = -0.8;
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float z = input.getZBuffer(y * width + x);
+            int intensity = (z == z_far) ? 0 : static_cast<int>(255 * (z - z_near) / (z_far - z_near));
+            intensity = clamp(intensity, 0, 255);
+            image.edit_pixel(x, y, to_string(intensity), to_string(intensity), to_string(intensity)); // Grayscale
+        }
+    }
+    image.vFlip();
+    image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\zBuffer.ppm");
 }

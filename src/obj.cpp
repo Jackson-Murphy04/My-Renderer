@@ -72,6 +72,14 @@ bool OBJ::readFile(string fileName) {
                     minY = verts[i][1];
                 }
             }
+            if (verts[i].size() > 1) {
+                if (verts[i][2] > maxZ) {
+                    maxZ = verts[i][2];
+                }
+                if (verts[i][2] < minZ) {
+                    minZ = verts[i][2];
+                }
+            }
         }
     }
     // return
@@ -127,6 +135,10 @@ float OBJ::getMaxY() {
     return maxY;
 }
 
+float OBJ::getMaxZ() {
+    return maxZ;
+}
+
 float OBJ::getMinX() {
     return minX;
 }
@@ -135,6 +147,22 @@ float OBJ::getMinY() {
     return minY;
 }
 
+float OBJ::getMinZ() {
+    return minZ;
+}
+
 vector<vector<int>> OBJ::getAllFaces() {
     return faces;
+}
+
+void OBJ::editZBuffer(int index, float z) {
+    zBuffer[index] = z;
+}
+
+void OBJ::initZBuffer(int width, int height) {
+    zBuffer.resize(width * height, 0.8);
+}
+
+float OBJ::getZBuffer(int index) {
+    return zBuffer[index];
 }
