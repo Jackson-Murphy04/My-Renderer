@@ -240,8 +240,8 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
                     // Point is inside the triangle, color it
                     // calculate and normalize z val of face and compare to z buffer and only draw pixel if z < zbuffer
                     z = barycentricZ(p, a, b, c, zV); // z[0] = a.z, z[1] = b.z, z[2] = c.z 
-                    if (z < input.getZBuffer(y1 * width + x1)) {
-                        input.editZBuffer((y1 * width + x1), z); 
+                    if (z < input.getZBuffer(x1 + y1 * width)) {
+                        input.editZBuffer((x1 + y1 * width), z); 
                         image.edit_pixel(x1, y1, r, g, bl);
                     }
                 } 

@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <limits>
 #include "C:\Users\Jackson\Desktop\Projects\myRenderer\include\obj.h"
 using namespace std;
 
@@ -160,7 +161,7 @@ void OBJ::editZBuffer(int index, float z) {
 }
 
 void OBJ::initZBuffer(int width, int height) {
-    zBuffer.resize(width * height, 0.8);
+    zBuffer.resize(width * height, numeric_limits<float>::infinity());
 }
 
 float OBJ::getZBuffer(int index) {
