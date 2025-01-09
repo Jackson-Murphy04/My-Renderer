@@ -23,5 +23,8 @@ public:
     void vFlip();
     int getCols() const;
     int getRows() const;
+    int getTCols() const;
+    int getTRows() const;
+    vector<string> getColor(int x, int y);
 };
 

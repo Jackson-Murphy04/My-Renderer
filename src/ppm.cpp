@@ -192,3 +192,11 @@ void PPM::vFlip() {
 int PPM::getCols() const { return cols; }
 
 int PPM::getRows() const { return rows; }
+
+int PPM::getTCols() const { return tCols; }
+
+int PPM::getTRows() const { return tRows; }
+
+vector<string> PPM::getColor(int x, int y) {
+    return texture[y][x];
+}

@@ -54,6 +54,16 @@ vector<float> cross_product(const vector<float>& a, const vector<float>& b) {
     };
 }
 
+// Scalar multiplication for vector<float>
+vector<float> operator*(float scalar, const vector<float>& vec) {
+    return {scalar * vec[0], scalar * vec[1]};
+}
+
+// Vector addition
+vector<float> operator+(const vector<float>& a, const vector<float>& b) {
+    return {a[0] + b[0], a[1] + b[1]};
+}
+
 // fill faces helpers
 // calculate area
 float triangle_area(vector<float> a, vector<float> b, vector<float> c) {
@@ -126,8 +136,25 @@ float barycentricZ(vector<float> p, vector<float> a, vector<float> b, vector<flo
     return z1;
 }
 
+vector<float> textureMap(vector<float> p, vector<float> a, vector<float> b, vector<float> c, vector<vector<float>> tC) {
+    // declare 
+    vector<float> tCords;
+    // areas
+    float area_abc = triangle_area(a, b, c);
+    float area_pbc = triangle_area(p, b, c);
+    float area_pca = triangle_area(p, c, a);
+    float area_pab = triangle_area(p, a, b);
+    // Compute weights
+    float alpha = area_pbc / area_abc;
+    float beta = area_pca / area_abc;
+    float gamma = area_pab / area_abc;
+    // interpolate texture cords
+    tCords = (alpha * tC[0]) + (beta * tC[1]) + (gamma * tC[2]);
+    return tCords;
+}
+
 // function to fill faces 
-void fill(vector<int> face, int width, int height, string r, string g, string bl, PPM& image, OBJ& input) {
+void fill(vector<int> texture, vector<int> face, int width, int height, string r, string g, string bl, PPM& image, OBJ& input) {
     // declare 
     float minX = .8;
     float minY = .8;
@@ -135,12 +162,15 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
     float maxY = -.8;
     float x, y, z;
     vector<float> vert;
-    vector<vector<vector<float>>> triangles; // all triangles of face, all verts of triangle, vert 
+    vector<vector<vector<float>>> triangles;
+    vector<vector<vector<float>>> triTex;
     vector<vector<float>> temp;
+    vector<vector<float>> temp2;
     vector<float> a;
     vector<float> b;
     vector<float> c;
     vector<float> zV;
+    vector<vector<float>> tC;
     // use ear clipping to triangulate polygon
     while (face.size() > 3) {
         bool ear_found = false;
@@ -155,6 +185,13 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
                 triangles.push_back(temp);
                 temp.clear();
                 face.erase(face.begin() + i);
+                // texture cords
+                temp2.push_back(input.getTVert(texture[prev] - 1));
+                temp2.push_back(input.getTVert(texture[i] - 1));
+                temp2.push_back(input.getTVert(texture[next] - 1));
+                triTex.push_back(temp2);
+                temp2.clear();
+                texture.erase(texture.begin() + i);
                 ear_found = true;
                 break;
             }
@@ -165,11 +202,18 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
         }
     }
     if (face.size() == 3) {
+        // triangle cords
         temp.push_back(input.getVert(face[0] - 1));
         temp.push_back(input.getVert(face[1] - 1));
         temp.push_back(input.getVert(face[2] - 1));
         triangles.push_back(temp);
         temp.clear();
+        // texture cords
+        temp2.push_back(input.getTVert(texture[0] - 1));
+        temp2.push_back(input.getTVert(texture[1] - 1));
+        temp2.push_back(input.getTVert(texture[2] - 1));
+        triTex.push_back(temp2);
+        temp2.clear();
     }
     // loop triangles 
     for (size_t j = 0; j < triangles.size(); j++) { 
@@ -231,6 +275,11 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             triangles[j][i][2] = z;
         }
         // barycentric coordinates to see if pixel is in bounding box and color
+        // texture cords vector
+        triTex[j][0].pop_back();
+        triTex[j][1].pop_back();
+        triTex[j][2].pop_back();
+        tC = {triTex[j][0], triTex[j][1], triTex[j][2]};
         // triangles[j] is our triangle
         zV = {triangles[j][0][2], triangles[j][1][2], triangles[j][2][2]};
         triangles[j][0].pop_back();
@@ -249,7 +298,32 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
                     z = barycentricZ(p, a, b, c, zV); // z[0] = a.z, z[1] = b.z, z[2] = c.z 
                     if (z < input.getZBuffer(x1, y1) - 0.5) {
                         input.editZBuffer(x1, y1, z);
-                        image.edit_pixel(x1, y1, r, g, bl);
+                        // perform texture mapping and get texture r g b val
+                        vector<float> tCords;
+                        tCords = textureMap(p, a, b, c, tC);
+                        //cout << tCords[0] << " " << tCords[1] << endl;
+                        if (tCords[0] > 1) {
+                            tCords[0] = 1;
+                        }
+                        if (tCords[1] > 1) {
+                            tCords[1] = 1;
+                        }
+                        int tX = round(tCords[0] * 1024);
+                        int tY = round(tCords[1] * 1024);
+                        if (tX == image.getTCols()) {
+                            tX -= 1;
+                        }
+                        if (tY == image.getTRows()) {
+                            tY -= 1;
+                        }
+                        vector<string> color;
+                        if (tX > image.getTCols() - 1 || tY > image.getTRows() - 1 || tX < 0 || tY < 0) {
+                            cout << tCords[0] << " " << tCords[1] << endl;
+                            cout << tX << " " << tY << " no good" << endl;
+                        }
+                        color = image.getColor(tX, tY);
+                        //image.edit_pixel(x1, y1, r, g, bl);
+                        image.edit_pixel(x1, y1, color[0], color[1], color[2]);
                     }
                 } 
             }
@@ -371,7 +445,7 @@ int main(int argc, char** argv) {
         float intensity = n * light_dir;
         if (intensity > 0) {
             // fill with color (intensity * 255)
-            fill(input.getFace(i), width, height, to_string(intensity * 255), to_string(intensity * 255), to_string(intensity * 255), image, input);
+            fill(input.getTexture(i), input.getFace(i), width, height, to_string(intensity * 255), to_string(intensity * 255), to_string(intensity * 255), image, input);
         }
     }
     // flip image

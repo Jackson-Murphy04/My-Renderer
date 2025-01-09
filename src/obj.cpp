@@ -12,8 +12,11 @@ bool OBJ::readFile(string fileName) {
     string test;
     float in;
     int next;
+    string trash;
     vector<float> vec;
     vector<int> fec;
+    vector<int> tex;
+    vector<float> vTex;
     stringstream ss;
     stringstream s2;
     // open file
@@ -43,11 +46,24 @@ bool OBJ::readFile(string fileName) {
                 s2 << test;
                 s2 >> next;
                 fec.push_back(next);
+                if (s2 >> trash) {
+                    s2 >> next;
+                    tex.push_back(next);
+                }
                 s2.str("");
                 s2.clear();
             }
             faces.push_back(fec);
+            textures.push_back(tex);
             fec.clear();
+            tex.clear();
+        }
+        if (test == "vt") {
+            while(ss >> in) {
+                vTex.push_back(in);
+            }
+            tVerts.push_back(vTex);
+            vTex.clear();
         }
         ss.str("");
         ss.clear();
@@ -120,8 +136,16 @@ vector<float> OBJ::getVert(int index) {
     return verts[index];
 }
 
+vector<float> OBJ::getTVert(int index) {
+    return tVerts[index];
+}
+
 vector<int> OBJ::getFace(int index) {
     return faces[index];
+}
+
+vector<int> OBJ::getTexture(int index) {
+    return textures[index];
 }
 
 size_t OBJ::faceCount() {
