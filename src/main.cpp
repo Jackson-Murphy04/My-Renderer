@@ -273,10 +273,16 @@ int main(int argc, char** argv) {
     width = 800;
     height = 800;
     // get input file and read
-    if (argc != 2) {
-        cerr << "missing input file: ./run <filename.obj>" << endl;
+    if (argc != 2 && argc != 3) {
+        cerr << "missing input file: ./run <object.obj> <texture.ppm>" << endl;
     }
-    input.readFile(argv[1]);
+    if (argc == 2) {
+        input.readFile(argv[1]);
+    } 
+    if (argc == 3) {
+        image.read_texture(argv[2]);
+        // also need to extract the texture cord for each vert and save to a vector
+    }
     // create ppm file
     image.create_ppm(width, height, 255);
 

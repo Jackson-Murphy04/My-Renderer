@@ -53,6 +53,57 @@ bool PPM::read_ppm(string fileName) {
     return true;
 }
 
+bool PPM::read_texture(string fileName) {
+    // declare
+    string pixel;
+    int col = 0;
+    int row = 0;
+    // open file stream
+    ifstream fin;
+    fin.open(fileName);
+    // make sure opens
+    if (!fin.is_open()) {
+        cerr << "input file failed to open" << endl;
+        return false;
+    }
+    // error check header is p3
+    fin >> pixel;
+    if (pixel != "P3") {
+        cerr << "wrong file header type" << endl;
+        return false;
+    }
+    fin >> tCols;
+    fin >> tRows;
+    fin >> tMax;
+    // init image vectors
+    texture.resize(tRows);
+    for (size_t i = 0; i < texture.size(); i++) {
+        texture[i].resize(tCols);
+        for (size_t j = 0; j < texture[i].size(); j++) {
+            texture[i][j].resize(3);
+        }
+    }
+    // read
+    while(fin >> pixel) {
+        texture[row][col][0] = pixel;
+        fin >> pixel;
+        texture[row][col][1] = pixel;
+        fin >> pixel;
+        texture[row][col][2] = pixel;
+        col++;
+        if(col == tCols) {
+            row++;
+            col = 0;
+        }
+    }
+    
+    // close file
+    fin.close();
+    //retrun
+    return true;
+}
+
+
 bool PPM::write_ppm(string fileName) {
     // open file stream
     ofstream fout;
