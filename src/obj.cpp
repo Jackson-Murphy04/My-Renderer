@@ -156,14 +156,21 @@ vector<vector<int>> OBJ::getAllFaces() {
     return faces;
 }
 
-void OBJ::editZBuffer(int index, float z) {
-    zBuffer[index] = z;
+void OBJ::editZBuffer(int x, int y, float z) {
+    //zBuffer[index] = z;
+    zBuffer[y][x] = z;
 }
 
-void OBJ::initZBuffer(int width, int height) {
-    zBuffer.resize(width * height, numeric_limits<float>::infinity());
+void OBJ::initZBuffer(int r, int c) {
+    // init image vectors
+    zBuffer.clear();
+    zBuffer.resize(r);
+    for (size_t i = 0; i < zBuffer.size(); i++) {
+        zBuffer[i].resize(c, numeric_limits<float>::infinity());
+    }
 }
 
-float OBJ::getZBuffer(int index) {
-    return zBuffer[index];
+float OBJ::getZBuffer(int x, int y) {
+    //return zBuffer[index];
+    return zBuffer[y][x];
 }

@@ -106,7 +106,7 @@ bool barycentric_coords(vector<float> p, vector<float> a, vector<float> b, vecto
     float beta = area_pca / area_abc;
     float gamma = area_pab / area_abc;
     // Check if the point is inside the triangle
-    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .1);
+    return (alpha >= 0 && beta >= 0 && gamma >= 0 && abs((alpha + beta + gamma)- 1) < .08);
 }
 
 float barycentricZ(vector<float> p, vector<float> a, vector<float> b, vector<float> c, vector<float> z) {
@@ -186,13 +186,20 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
             x = vert[0];
             y = vert[1];
             z = vert[2];
-            // normalize cords to (-.8,.8) grid 
-            vert[0] = ((vert[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
-            vert[1] = ((vert[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
-            vert[2] = ((vert[2] - input.getMinZ()) / (input.getMaxZ() - input.getMinZ())) * 1.6 - .8;
+            // Find the larger dimension
+            float maxDimension = max(input.getMaxX() - input.getMinX(), 
+                                    input.getMaxY() - input.getMinY());
+
+            // Calculate centers
+            float centerX = (input.getMaxX() + input.getMinX()) / 2.0f;
+            float centerY = (input.getMaxY() + input.getMinY()) / 2.0f;
+
+            // normalize cords to (-.8,.8) grid while preserving aspect ratio and centering
+            x = ((x - centerX) / maxDimension) * 2;
+            y = ((y - centerY) / maxDimension) * 2;
             // transform to 2D space
-            x = (vert[0] + 1) * (width / 2);
-            y = (vert[1] + 1) * (height / 2);
+            x = (x + 1) * (width / 2);
+            y = (y + 1) * (height / 2);
             if (!(x == 0)) {
                 x -= 1;
             } 
@@ -240,8 +247,8 @@ void fill(vector<int> face, int width, int height, string r, string g, string bl
                     // Point is inside the triangle, color it
                     // calculate and normalize z val of face and compare to z buffer and only draw pixel if z < zbuffer
                     z = barycentricZ(p, a, b, c, zV); // z[0] = a.z, z[1] = b.z, z[2] = c.z 
-                    if (z < input.getZBuffer(x1 + y1 * width)) {
-                        input.editZBuffer((x1 + y1 * width), z); 
+                    if (z < input.getZBuffer(x1, y1) - 0.5) {
+                        input.editZBuffer(x1, y1, z);
                         image.edit_pixel(x1, y1, r, g, bl);
                     }
                 } 
@@ -319,9 +326,9 @@ int main(int argc, char** argv) {
     }
     image.vFlip();
     image.write_ppm("C:\\Users\\Jackson\\Desktop\\Projects\\myRenderer\\output\\wireFrame.ppm");
+
     input.readFile(argv[1]);
     image.create_ppm(width, height, 255);
-    
     // full render
     //loop through faces and fill each face
     // define light direction
@@ -370,7 +377,7 @@ int main(int argc, char** argv) {
     float z_far = -0.8;
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            float z = input.getZBuffer(y * width + x);
+            float z = input.getZBuffer(x, y);
             int intensity = (z == z_far) ? 0 : static_cast<int>(255 * (z - z_near) / (z_far - z_near));
             intensity = clamp(intensity, 0, 255);
             image.edit_pixel(x, y, to_string(intensity), to_string(intensity), to_string(intensity)); // Grayscale

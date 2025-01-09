@@ -6,7 +6,7 @@ class OBJ {
 protected:
     vector<vector<float>> verts;
     vector<vector<int>> faces;
-    vector<float> zBuffer;
+    vector<vector<float>> zBuffer;
     float maxX = 0;
     float maxY = 0;
     float minX = 0;
@@ -26,7 +26,7 @@ public:
     float getMaxZ();
     float getMinZ();
     vector<vector<int>> getAllFaces();
-    void editZBuffer(int index, float z);
-    void initZBuffer(int width, int height);
-    float getZBuffer(int index);
+    void editZBuffer(int x, int y, float z);
+    void initZBuffer(int r, int c);
+    float getZBuffer(int x, int y);
 };
