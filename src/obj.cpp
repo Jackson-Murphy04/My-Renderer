@@ -12,7 +12,7 @@ bool OBJ::readFile(string fileName) {
     string test;
     float in;
     int next;
-    string trash;
+    char trash;
     vector<float> vec;
     vector<int> fec;
     vector<int> tex;
