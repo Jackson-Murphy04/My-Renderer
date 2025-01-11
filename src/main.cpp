@@ -327,8 +327,29 @@ void fill(vector<int> texture, vector<int> face, int width, int height, float in
                         string r = to_string(min(255, (int)(stof(color[0]) * intensity)));
                         string g = to_string(min(255, (int)(stof(color[1]) * intensity)));
                         string b = to_string(min(255, (int)(stof(color[2]) * intensity)));
+                        // perspective projection of cords (cords transformation to camera)
+                        float c = 1000;
+                        vector<vector<float>> cameraMatrix;
+                        cameraMatrix = {{1, 0, 0, 0,}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, -1/c, 1}}; 
+                        vector<float> pixelMatrix;
+                        pixelMatrix = {x1, y1, z, 1};
+                        vector<float> outMatrix;
+                        // camera * pixel
+                        for (size_t i = 0; i < cameraMatrix.size(); i++) {
+                            float out = 0;
+                            for (size_t j = 0; j < pixelMatrix.size(); j++) {
+                                out += cameraMatrix[i][j] * pixelMatrix[j];
+                            }
+                            outMatrix.push_back(out);
+                        }
+                        //float divisor = 1 - (outMatrix[2] / c);
+                        float divisor = outMatrix[3];
                         // edit pixel
-                        image.edit_pixel(x1, y1, r, g, b);
+                        int px = (outMatrix[0] / divisor);
+                        int py = (outMatrix[1] / divisor);
+                        px = clamp(px, 0, image.getCols() - 1);
+                        py = clamp(py, 0, image.getRows() - 1);
+                        image.edit_pixel(px, py, r, g, b);
                     }
                 } 
             }
@@ -510,11 +531,16 @@ int main(int argc, char** argv) {
             } else {
                 vert2 = input.getVert(face[j + 1] - 1);
             }
+            // Find the larger dimension
+            float maxDimension = max(input.getMaxX() - input.getMinX(), input.getMaxY() - input.getMinY());
+            // Calculate centers
+            float centerX = (input.getMaxX() + input.getMinX()) / 2.0f;
+            float centerY = (input.getMaxY() + input.getMinY()) / 2.0f;
             // normalize cords to -.8 - .8 grid 
-            vert[0] = ((vert[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
-            vert[1] = ((vert[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
-            vert2[0] = ((vert2[0] - input.getMinX()) / (input.getMaxX() - input.getMinX())) * 1.6 - .8;
-            vert2[1] = ((vert2[1] - input.getMinY()) / (input.getMaxY() - input.getMinY())) * 1.6 - .8;
+            vert[0] = ((vert[0] - centerX) / maxDimension) * 2;
+            vert[1] = ((vert[1] - centerY) / maxDimension) * 2;
+            vert2[0] = ((vert2[0] - centerX) / maxDimension) * 2;
+            vert2[1] = ((vert2[1] - centerY) / maxDimension) * 2;
             // transform to 2D space
             x0 = (vert[0] + 1) * (width / 2);
             y0 = (vert[1] + 1) * (height / 2);
